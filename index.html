@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SDA Live Tracker</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Courier New',monospace;background:#0a0c12;color:#e5e7eb}
+  #app{width:100%;height:100vh;position:relative;display:flex;flex-direction:column}
+  #header{padding:12px 16px 8px;border-bottom:0.5px solid #2a2d36;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .logo-badge{font-size:10px;font-weight:500;letter-spacing:0.12em;color:#9ca3af;border:0.5px solid #3a3d46;padding:3px 8px;border-radius:3px}
+  #title{font-size:13px;font-weight:500;letter-spacing:0.04em}
+  #subtitle{font-size:10px;color:#9ca3af;letter-spacing:0.06em}
+  #status-bar{display:flex;gap:16px;align-items:center}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .status-label{font-size:10px;color:#9ca3af;letter-spacing:0.08em}
+  #main{display:flex;flex:1;overflow:hidden}
+  #canvas-container{flex:1;position:relative}
+  canvas{display:block;width:100%;height:100%}
+  #sidebar{width:260px;border-left:0.5px solid #2a2d36;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+  .panel{border-bottom:0.5px solid #2a2d36;padding:12px}
+  .panel-title{font-size:9px;letter-spacing:0.14em;color:#9ca3af;margin-bottom:10px;text-transform:uppercase}
+  .metric{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .metric-label{font-size:10px;color:#9ca3af}
+  .metric-value{font-size:11px;font-weight:500}
+  .metric-value.green{color:#22c55e}
+  .metric-value.amber{color:#f59e0b}
+  .metric-value.red{color:#ef4444}
+  .metric-value.blue{color:#3b82f6}
+  #conjunction-list{flex:1;overflow-y:auto;padding:12px}
+  .conj-item{padding:8px;border:0.5px solid #2a2d36;border-radius:4px;margin-bottom:6px}
+  .conj-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+  .conj-id{font-size:10px;font-weight:500}
+  .conj-detail{font-size:9px;color:#9ca3af}
+  #mode-tabs{display:flex;gap:1px;margin-bottom:10px}
+  .tab{font-size:9px;letter-spacing:0.1em;padding:4px 8px;cursor:pointer;color:#9ca3af;border-bottom:1.5px solid transparent}
+  .tab.active{color:#e5e7eb;border-bottom-color:#e5e7eb}
+  #footer{border-top:0.5px solid #2a2d36;padding:8px 16px;font-size:10px;color:#9ca3af;display:flex;justify-content:space-between}
+  #empty-state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;padding:2rem}
+  #empty-state p{font-size:11px;color:#9ca3af;max-width:360px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="logo-badge">SDA TRACKER</div>
+      <div>
+        <div id="title">LIVE SPACE DOMAIN AWARENESS</div>
+        <div id="subtitle">SPACE-TRACK GP DATA · SGP4 SCREENING · REAL NRHO PROPAGATION</div>
+      </div>
+    </div>
+    <div id="status-bar">
+      <div style="display:flex;align-items:center;gap:6px"><div class="status-dot"></div><div class="status-label" id="update-label">LOADING</div></div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="canvas-container">
+      <canvas id="orbitCanvas"></canvas>
+      <div id="empty-state" style="display:none">
+        <p>No live LEO/MEO-GEO data yet. This tab populates after the first GitHub Actions run against Space-Track (runs every 6 hours, or trigger manually from the Actions tab).</p>
+      </div>
+    </div>
+    <div id="sidebar">
+      <div class="panel">
+        <div id="mode-tabs">
+          <div class="tab active" onclick="setTab('leo')">LEO</div>
+          <div class="tab" onclick="setTab('meo')">MEO/GEO</div>
+          <div class="tab" onclick="setTab('lunar')">LUNAR</div>
+        </div>
+        <div class="metric"><span class="metric-label">Objects tracked</span><span class="metric-value blue" id="m-objects">—</span></div>
+        <div class="metric"><span class="metric-label">Close approaches (24h)</span><span class="metric-value amber" id="m-conj">—</span></div>
+        <div class="metric"><span class="metric-label">Newest TLE age</span><span class="metric-value green" id="m-age">—</span></div>
+      </div>
+      <div class="panel" style="padding-bottom:8px"><div class="panel-title">Close-approach queue</div></div>
+      <div id="conjunction-list"></div>
+    </div>
+  </div>
+
+  <div id="footer">
+    <span id="data-source-note">Data source: pending</span>
+    <span id="generated-at">—</span>
+  </div>
+</div>
+
+<script>
+let DATA = null;
+let activeTab = 'leo';
+const canvas = document.getElementById('orbitCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy;
+
+function resize() {
+  const c = document.getElementById('canvas-container');
+  W = c.clientWidth; H = c.clientHeight;
+  canvas.width = W; canvas.height = H;
+  cx = W / 2; cy = H / 2;
+}
+
+async function loadData() {
+  const res = await fetch('data.json?_=' + Date.now());
+  DATA = await res.json();
+  document.getElementById('update-label').textContent = DATA.status === 'pending_first_live_fetch' ? 'AWAITING FIRST FETCH' : 'LIVE';
+  document.getElementById('generated-at').textContent = 'Generated: ' + DATA.generated_at_utc;
+  document.getElementById('data-source-note').textContent = 'Data source: Space-Track GP + CDM, real SGP4 screening';
+  render();
+}
+
+function currentBlock() {
+  if (activeTab === 'leo') return DATA.leo;
+  if (activeTab === 'meo') return DATA.meo_geo;
+  return null;
+}
+
+function setTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => { if (t.textContent.toLowerCase().includes(tab.substring(0,3))) t.classList.add('active'); });
+  render();
+}
+
+function renderConjunctionList(block) {
+  const list = document.getElementById('conjunction-list');
+  list.innerHTML = '';
+  if (!block || !block.conjunctions.length) {
+    list.innerHTML = '<div class="conj-detail">No close approaches within the current screening threshold.</div>';
+    return;
+  }
+  block.conjunctions.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'conj-item';
+    div.innerHTML = `<div class="conj-header"><span class="conj-id">${c.a}</span><span class="metric-value amber">${c.miss_distance_km} km</span></div>
+      <div class="conj-detail">vs ${c.b} · TCA +${c.tca_hours_from_now}h · ${c.source}</div>`;
+    list.appendChild(div);
+  });
+}
+
+function drawObjects(block) {
+  resize();
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0a0c12';
+  ctx.fillRect(0,0,W,H);
+  const earthR = Math.min(W,H) * 0.15;
+  ctx.beginPath(); ctx.arc(cx, cy, earthR, 0, Math.PI*2);
+  ctx.fillStyle = '#1a4a8c'; ctx.fill();
+
+  if (!block || !block.objects.length) {
+    document.getElementById('empty-state').style.display = 'flex';
+    return;
+  }
+  document.getElementById('empty-state').style.display = 'none';
+
+  const maxApogee = Math.max(...block.objects.map(o => o.apogee_km || 1));
+  const scale = (Math.min(W,H) * 0.42) / (maxApogee || 1);
+  block.objects.forEach((o, i) => {
+    const angle = (i / block.objects.length) * Math.PI * 2;
+    const r = earthR + (o.apogee_km || 500) * scale * 0.3 + 20;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle) * 0.6;
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2);
+    ctx.fillStyle = o.object_type === 'DEBRIS' ? '#ef4444' : '#3b82f6';
+    ctx.fill();
+    ctx.fillStyle = '#9ca3af'; ctx.font = '9px monospace';
+    ctx.fillText(o.name, x + 6, y + 3);
+  });
+}
+
+function drawLunar(block) {
+  resize();
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0a0c12';
+  ctx.fillRect(0,0,W,H);
+  document.getElementById('empty-state').style.display = 'none';
+  if (!block || !block.trajectory_km) return;
+
+  const pts = block.trajectory_km;
+  const xs = pts.map(p => p[0]), zs = pts.map(p => p[2]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  const pad = 40;
+  const sx = (W - pad*2) / (maxX - minX || 1);
+  const sz = (H - pad*2) / (maxZ - minZ || 1);
+  const s = Math.min(sx, sz);
+
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const x = pad + (p[0] - minX) * s;
+    const y = pad + (p[2] - minZ) * s;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  const moonX = pad + (1.0 - minX/1) * s;
+  ctx.fillStyle = '#9ca3af'; ctx.font = '10px monospace';
+  ctx.fillText('NRHO trajectory (real CR3BP DOP853 propagation)', pad, 20);
+}
+
+function render() {
+  if (!DATA) return;
+  if (activeTab === 'lunar') {
+    drawLunar(DATA.lunar);
+    document.getElementById('m-objects').textContent = '1 (NRHO)';
+    document.getElementById('m-conj').textContent = 'N/A';
+    document.getElementById('m-age').textContent = 'N/A';
+    document.getElementById('conjunction-list').innerHTML = '<div class="conj-detail">' + DATA.lunar.note + '</div>';
+    return;
+  }
+  const block = currentBlock();
+  drawObjects(block);
+  renderConjunctionList(block);
+  document.getElementById('m-objects').textContent = block ? block.objects.length : 0;
+  document.getElementById('m-conj').textContent = block ? block.conjunctions.length : 0;
+  const ages = block ? block.objects.map(o => o.tle_age_hours).filter(a => a != null) : [];
+  document.getElementById('m-age').textContent = ages.length ? Math.min(...ages).toFixed(1) + ' h' : '—';
+}
+
+loadData();
+window.addEventListener('resize', render);
+</script>
+</body>
+</html>

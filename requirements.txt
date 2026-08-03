@@ -1,0 +1,4 @@
+sgp4>=2.23
+numpy>=1.26
+scipy>=1.11
+requests>=2.31
