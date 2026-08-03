@@ -80,10 +80,26 @@
   </div>
 
   <div id="footer">
-    <span id="data-source-note">Data source: pending</span>
+    <div class="footer-controls">
+      <button class="ctrl-btn" id="btn-play" onclick="togglePlay()">Pause</button>
+      <button class="ctrl-btn" id="btn-trails" onclick="toggleTrails()">Trails</button>
+    </div>
     <span id="generated-at">—</span>
+    <div class="footer-controls">
+      <span id="data-source-note" style="margin-right:8px">Data source: pending</span>
+      <button class="ctrl-btn" onclick="setSpeed(60)">x60</button>
+      <button class="ctrl-btn" onclick="setSpeed(600)">x600</button>
+      <button class="ctrl-btn" onclick="setSpeed(3600)">x3600</button>
+    </div>
   </div>
 </div>
+
+<style>
+  .footer-controls{display:flex;gap:8px;align-items:center}
+  .ctrl-btn{font-size:10px;letter-spacing:0.08em;color:#9ca3af;border:0.5px solid #2a2d36;background:transparent;padding:4px 10px;border-radius:3px;cursor:pointer;font-family:'Courier New',monospace}
+  .ctrl-btn:hover{border-color:#4a4d56;color:#e5e7eb}
+  .ctrl-btn.active{border-color:#4a4d56;color:#e5e7eb;background:#151821}
+</style>
 
 <script>
 let DATA = null;
@@ -91,6 +107,32 @@ let activeTab = 'leo';
 const canvas = document.getElementById('orbitCanvas');
 const ctx = canvas.getContext('2d');
 let W, H, cx, cy;
+
+let playing = true;
+let showTrails = false;
+let speedMult = 60;
+let simTime = 0;
+let lastTs = null;
+let trails = {};
+
+const MU_EARTH = 398600.4418;
+const RE_KM = 6371;
+
+function orbitalPeriodSeconds(perigee_km, apogee_km) {
+  const a = RE_KM + ((perigee_km || 400) + (apogee_km || 400)) / 2;
+  return 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / MU_EARTH);
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('btn-play').textContent = playing ? 'Pause' : 'Play';
+}
+function toggleTrails() {
+  showTrails = !showTrails;
+  document.getElementById('btn-trails').classList.toggle('active', showTrails);
+  trails = {};
+}
+function setSpeed(s) { speedMult = s; }
 
 function resize() {
   const c = document.getElementById('canvas-container');
@@ -182,12 +224,34 @@ function drawObjects(block) {
     return (h / 360) * Math.PI * 2;
   }
 
-  block.objects.forEach((o) => {
-    const angle = hashAngle(o.norad_id);
+  const positions = block.objects.map((o) => {
+    const period = orbitalPeriodSeconds(o.perigee_km, o.apogee_km);
+    const angle = hashAngle(o.norad_id) + (2 * Math.PI * simTime) / period;
     const midAlt = ((o.perigee_km || 0) + (o.apogee_km || 0)) / 2;
     const r = altToRadius(midAlt);
     const x = cx + r * Math.cos(angle);
     const y = cy + r * Math.sin(angle) * 0.55;
+    return { o, x, y };
+  });
+
+  if (showTrails) {
+    positions.forEach(({o, x, y}) => {
+      if (!trails[o.norad_id]) trails[o.norad_id] = [];
+      trails[o.norad_id].push({x, y});
+      if (trails[o.norad_id].length > 80) trails[o.norad_id].shift();
+      const pts = trails[o.norad_id];
+      if (pts.length > 2) {
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+        pts.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.strokeStyle = (o.object_type === 'DEBRIS' ? '#ef4444' : '#3b82f6') + '55';
+        ctx.lineWidth = 1; ctx.stroke();
+      }
+    });
+  } else {
+    trails = {};
+  }
+
+  positions.forEach(({o, x, y}) => {
     const isDebris = o.object_type === 'DEBRIS';
     const color = isDebris ? '#ef4444' : '#3b82f6';
 
@@ -250,6 +314,15 @@ function drawLunar(block) {
   ctx.fillStyle = '#9ca3af';
   ctx.fillText('Moon', mx + 10, my + 4);
 
+  const NRHO_PERIOD_SECONDS = 6.5 * 86400;
+  const frac = (simTime % NRHO_PERIOD_SECONDS) / NRHO_PERIOD_SECONDS;
+  const idx = Math.floor(frac * (pts.length - 1));
+  const [gx, gy] = toPx(pts[idx]);
+  ctx.beginPath(); ctx.arc(gx, gy, 4, 0, Math.PI*2);
+  ctx.fillStyle = '#f59e0b'; ctx.fill();
+  ctx.beginPath(); ctx.arc(gx, gy, 4, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.stroke();
+
   ctx.fillStyle = '#9ca3af'; ctx.font = '10px monospace';
   ctx.fillText('NRHO trajectory (real CR3BP DOP853 propagation, X-Z rotating frame, km)', pad, 22);
   ctx.font = '9px monospace';
@@ -275,7 +348,16 @@ function render() {
   document.getElementById('m-age').textContent = ages.length ? Math.min(...ages).toFixed(1) + ' h' : '—';
 }
 
-loadData();
+function animate(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min((ts - lastTs) / 1000, 0.1);
+  lastTs = ts;
+  if (playing && DATA) simTime += dt * speedMult;
+  render();
+  requestAnimationFrame(animate);
+}
+
+loadData().then(() => requestAnimationFrame(animate));
 window.addEventListener('resize', render);
 </script>
 </body>
