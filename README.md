@@ -25,12 +25,15 @@ export SPACETRACK_PASS="your-password"
 python scripts/fetch_data.py
 ```
 
-## Running live on GitHub
+## Deployment status
 
-1. Push this repo to GitHub.
-2. In repo Settings → Secrets and variables → Actions, add `SPACETRACK_USER` and `SPACETRACK_PASS`.
-3. The included workflow (`.github/workflows/update-data.yml`) runs every 6 hours and commits a fresh `data.json`. Trigger it manually from the Actions tab for the first run.
-4. Enable GitHub Pages (Settings → Pages → deploy from the repo root) to serve `index.html` live.
+This repo is live at `github.com/flaxnaz/sda-tracker`. The workflow runs every 6 hours and commits a fresh `data.json` automatically; trigger it manually from the Actions tab if you want an update sooner.
+
+To adapt this for your own Space-Track account:
+
+1. Fork or clone this repo.
+2. In your fork's Settings → Secrets and variables → Actions, add `SPACETRACK_USER` and `SPACETRACK_PASS`.
+3. Enable GitHub Pages (Settings → Pages → deploy from `main`, root) to serve `index.html` live.
 
 ## Stack
 
