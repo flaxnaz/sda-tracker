@@ -142,9 +142,7 @@ function drawObjects(block) {
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle = '#0a0c12';
   ctx.fillRect(0,0,W,H);
-  const earthR = Math.min(W,H) * 0.15;
-  ctx.beginPath(); ctx.arc(cx, cy, earthR, 0, Math.PI*2);
-  ctx.fillStyle = '#1a4a8c'; ctx.fill();
+  const earthR = Math.min(W,H) * 0.1;
 
   if (!block || !block.objects.length) {
     document.getElementById('empty-state').style.display = 'flex';
@@ -152,19 +150,61 @@ function drawObjects(block) {
   }
   document.getElementById('empty-state').style.display = 'none';
 
-  const maxApogee = Math.max(...block.objects.map(o => o.apogee_km || 1));
-  const scale = (Math.min(W,H) * 0.42) / (maxApogee || 1);
-  block.objects.forEach((o, i) => {
-    const angle = (i / block.objects.length) * Math.PI * 2;
-    const r = earthR + (o.apogee_km || 500) * scale * 0.3 + 20;
-    const x = cx + r * Math.cos(angle);
-    const y = cy + r * Math.sin(angle) * 0.6;
-    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2);
-    ctx.fillStyle = o.object_type === 'DEBRIS' ? '#ef4444' : '#3b82f6';
-    ctx.fill();
-    ctx.fillStyle = '#9ca3af'; ctx.font = '9px monospace';
-    ctx.fillText(o.name, x + 6, y + 3);
+  const perigees = block.objects.map(o => o.perigee_km || 500);
+  const apogees = block.objects.map(o => o.apogee_km || 500);
+  const minAlt = Math.min(...perigees);
+  const maxAlt = Math.max(...apogees);
+  const ringMin = earthR + 50;
+  const ringMax = Math.min(W, H) * 0.46;
+
+  function altToRadius(alt) {
+    if (maxAlt === minAlt) return (ringMin + ringMax) / 2;
+    return ringMin + ((alt - minAlt) / (maxAlt - minAlt)) * (ringMax - ringMin);
+  }
+
+  [0.25, 0.5, 0.75, 1].forEach(f => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringMin + f * (ringMax - ringMin), 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(148,163,184,0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   });
+
+  ctx.beginPath(); ctx.arc(cx, cy, earthR, 0, Math.PI*2);
+  ctx.fillStyle = '#1a4a8c'; ctx.fill();
+  ctx.fillStyle = '#9ca3af'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('EARTH', cx, cy + 3);
+  ctx.textAlign = 'left';
+
+  function hashAngle(id) {
+    let h = 0;
+    String(id).split('').forEach(c => { h = (h * 31 + c.charCodeAt(0)) % 360; });
+    return (h / 360) * Math.PI * 2;
+  }
+
+  block.objects.forEach((o) => {
+    const angle = hashAngle(o.norad_id);
+    const midAlt = ((o.perigee_km || 0) + (o.apogee_km || 0)) / 2;
+    const r = altToRadius(midAlt);
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle) * 0.55;
+    const isDebris = o.object_type === 'DEBRIS';
+    const color = isDebris ? '#ef4444' : '#3b82f6';
+
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.fillStyle = '#e5e7eb'; ctx.font = '10px monospace';
+    ctx.fillText(o.name, x + 10, y + 3);
+  });
+
+  ctx.fillStyle = '#3b82f6'; ctx.font = '9px monospace'; ctx.fillText('●', 16, H - 34);
+  ctx.fillStyle = '#9ca3af'; ctx.fillText('Satellite', 30, H - 34);
+  ctx.fillStyle = '#ef4444'; ctx.fillText('●', 16, H - 18);
+  ctx.fillStyle = '#9ca3af'; ctx.fillText('Debris', 30, H - 18);
+  ctx.fillText('Rings: altitude bands, not to true scale', 110, H - 26);
 }
 
 function drawLunar(block) {
@@ -175,26 +215,45 @@ function drawLunar(block) {
   document.getElementById('empty-state').style.display = 'none';
   if (!block || !block.trajectory_km) return;
 
+  const MU = 0.012153;
+  const EARTH_MOON_KM = 384400;
+  const earthKm = [-MU * EARTH_MOON_KM, 0, 0];
+  const moonKm = [(1 - MU) * EARTH_MOON_KM, 0, 0];
+
   const pts = block.trajectory_km;
-  const xs = pts.map(p => p[0]), zs = pts.map(p => p[2]);
+  const xs = pts.map(p => p[0]).concat([earthKm[0], moonKm[0]]);
+  const zs = pts.map(p => p[2]).concat([earthKm[2], moonKm[2]]);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
   const minZ = Math.min(...zs), maxZ = Math.max(...zs);
-  const pad = 40;
+  const pad = 60;
   const sx = (W - pad*2) / (maxX - minX || 1);
   const sz = (H - pad*2) / (maxZ - minZ || 1);
   const s = Math.min(sx, sz);
+  const toPx = (p) => [pad + (p[0] - minX) * s, H/2 - ((minZ+maxZ)/2 - p[2]) * s];
 
   ctx.beginPath();
   pts.forEach((p, i) => {
-    const x = pad + (p[0] - minX) * s;
-    const y = pad + (p[2] - minZ) * s;
+    const [x, y] = toPx(p);
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   });
-  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.stroke();
 
-  const moonX = pad + (1.0 - minX/1) * s;
+  const [ex, ey] = toPx(earthKm);
+  ctx.beginPath(); ctx.arc(ex, ey, 8, 0, Math.PI*2);
+  ctx.fillStyle = '#1a4a8c'; ctx.fill();
   ctx.fillStyle = '#9ca3af'; ctx.font = '10px monospace';
-  ctx.fillText('NRHO trajectory (real CR3BP DOP853 propagation)', pad, 20);
+  ctx.fillText('Earth', ex + 12, ey + 4);
+
+  const [mx, my] = toPx(moonKm);
+  ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI*2);
+  ctx.fillStyle = '#9e9890'; ctx.fill();
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillText('Moon', mx + 10, my + 4);
+
+  ctx.fillStyle = '#9ca3af'; ctx.font = '10px monospace';
+  ctx.fillText('NRHO trajectory (real CR3BP DOP853 propagation, X-Z rotating frame, km)', pad, 22);
+  ctx.font = '9px monospace';
+  ctx.fillText('Genuinely near-rectilinear -- this narrow shape is the real orbit geometry, not a rendering issue', pad, 38);
 }
 
 function render() {
