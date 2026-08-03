@@ -35,7 +35,11 @@ GNSS_GEO_NORAD_IDS = [
 
 def build_leo_block(client):
     primary = client.gp_by_norad_ids(LEO_NORAD_IDS)
-    nearby = client.gp_by_altitude_band(*LEO_PERIGEE_BAND_KM, limit=300)
+    try:
+        nearby = client.gp_by_altitude_band(*LEO_PERIGEE_BAND_KM, limit=300)
+    except Exception as exc:
+        print(f"Altitude-band query failed, continuing with primary objects only: {exc}")
+        nearby = []
     catalog = {rec["NORAD_CAT_ID"]: rec for rec in (primary + nearby)}
     records = list(catalog.values())
 

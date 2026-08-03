@@ -12,7 +12,7 @@ import requests
 BASE_URL = "https://www.space-track.org"
 LOGIN_URL = f"{BASE_URL}/ajaxauth/login"
 
-MIN_REQUEST_INTERVAL_S = 1.5  # client-side throttling, well under Space-Track's rate limit
+MIN_REQUEST_INTERVAL_S = 4.0  # Space-Track enforces roughly 1 request/2s and ~20/min; stay well under
 MAX_RETRIES = 4
 
 
@@ -49,22 +49,35 @@ class SpaceTrackClient:
         if not self._logged_in:
             self.login()
 
+        last_status = None
+        last_body = None
         for attempt in range(1, MAX_RETRIES + 1):
             self._throttle()
             self._last_request_ts = time.time()
             resp = self.session.get(f"{BASE_URL}{query_path}", timeout=60)
+            last_status, last_body = resp.status_code, resp.text[:500]
 
             if resp.status_code == 200:
-                return resp.json()
+                try:
+                    return resp.json()
+                except ValueError:
+                    print(f"Space-Track returned 200 but non-JSON body for {query_path}: {last_body}")
+                    raise
 
             if resp.status_code == 429 or resp.status_code >= 500:
                 backoff = 2 ** attempt
+                print(f"Attempt {attempt}/{MAX_RETRIES} got HTTP {resp.status_code} for {query_path}, "
+                      f"backing off {backoff}s. Body: {last_body}")
                 time.sleep(backoff)
                 continue
 
+            print(f"Space-Track returned HTTP {resp.status_code} for {query_path}. Body: {last_body}")
             resp.raise_for_status()
 
-        raise RuntimeError(f"Space-Track request failed after {MAX_RETRIES} retries: {query_path}")
+        raise RuntimeError(
+            f"Space-Track request failed after {MAX_RETRIES} retries: {query_path} "
+            f"(last status {last_status}, body: {last_body})"
+        )
 
     def gp_by_norad_ids(self, norad_ids):
         """Fetch current GP (TLE-equivalent) data for a list of NORAD catalog IDs."""
