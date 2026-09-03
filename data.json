@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-03T10:21:26.138965+00:00",
+  "generated_at_utc": "2026-09-03T15:27:45.987263+00:00",
   "leo": {
     "objects": [
       {
@@ -9,7 +9,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 51.6312,
-        "tle_age_hours": 6.15
+        "tle_age_hours": 11.25
       },
       {
         "norad_id": "39084",
@@ -18,7 +18,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 98.2237,
-        "tle_age_hours": 6.26
+        "tle_age_hours": 9.72
       },
       {
         "norad_id": "43013",
@@ -27,7 +27,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 98.78,
-        "tle_age_hours": 7.97
+        "tle_age_hours": 9.69
       },
       {
         "norad_id": "49260",
@@ -36,7 +36,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 98.2217,
-        "tle_age_hours": 5.44
+        "tle_age_hours": 10.54
       }
     ],
     "conjunctions": []
@@ -50,7 +50,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 55.071,
-        "tle_age_hours": 12.86
+        "tle_age_hours": 17.97
       },
       {
         "norad_id": "28921",
@@ -59,7 +59,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 64.845,
-        "tle_age_hours": 181363.17
+        "tle_age_hours": 181368.27
       },
       {
         "norad_id": "32260",
@@ -68,7 +68,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 54.1568,
-        "tle_age_hours": 22.17
+        "tle_age_hours": 27.27
       },
       {
         "norad_id": "32711",
@@ -77,7 +77,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 54.5026,
-        "tle_age_hours": 12.41
+        "tle_age_hours": 17.51
       },
       {
         "norad_id": "41328",
@@ -86,7 +86,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 55.5742,
-        "tle_age_hours": 78.7
+        "tle_age_hours": 83.81
       }
     ],
     "conjunctions": []
