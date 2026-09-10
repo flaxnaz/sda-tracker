@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-10T15:28:08.854068+00:00",
+  "generated_at_utc": "2026-09-10T20:12:58.596503+00:00",
   "leo": {
     "objects": [
       {
@@ -9,7 +9,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 51.6301,
-        "tle_age_hours": 12.04
+        "tle_age_hours": 9.04
       },
       {
         "norad_id": "39084",
@@ -18,7 +18,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 98.2229,
-        "tle_age_hours": 9.62
+        "tle_age_hours": 6.13
       },
       {
         "norad_id": "43013",
@@ -27,7 +27,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 98.7808,
-        "tle_age_hours": 8.53
+        "tle_age_hours": 6.51
       },
       {
         "norad_id": "49260",
@@ -36,7 +36,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 98.221,
-        "tle_age_hours": 20.33
+        "tle_age_hours": 8.6
       }
     ],
     "conjunctions": []
@@ -50,7 +50,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 55.0743,
-        "tle_age_hours": 24.05
+        "tle_age_hours": 28.8
       },
       {
         "norad_id": "28921",
@@ -59,7 +59,7 @@
         "perigee_km": 0.0,
         "apogee_km": 0.0,
         "inclination_deg": 64.845,
-        "tle_age_hours": 181536.28
+        "tle_age_hours": 181541.03
       },
       {
         "norad_id": "32260",
@@ -67,8 +67,8 @@
         "object_type": "PAYLOAD",
         "perigee_km": 0.0,
         "apogee_km": 0.0,
-        "inclination_deg": 54.1623,
-        "tle_age_hours": 27.75
+        "inclination_deg": 54.1632,
+        "tle_age_hours": 8.56
       },
       {
         "norad_id": "32711",
@@ -76,8 +76,8 @@
         "object_type": "PAYLOAD",
         "perigee_km": 0.0,
         "apogee_km": 0.0,
-        "inclination_deg": 54.5032,
-        "tle_age_hours": 41.92
+        "inclination_deg": 54.5033,
+        "tle_age_hours": -1.2
       },
       {
         "norad_id": "41328",
@@ -85,8 +85,8 @@
         "object_type": "PAYLOAD",
         "perigee_km": 0.0,
         "apogee_km": 0.0,
-        "inclination_deg": 55.5813,
-        "tle_age_hours": 24.47
+        "inclination_deg": 55.5821,
+        "tle_age_hours": 5.29
       }
     ],
     "conjunctions": []
